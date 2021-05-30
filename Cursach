@@ -1,0 +1,366 @@
+#include <iostream>
+#include <bitset>
+#include <string>
+#include <fstream>
+#include <cmath>
+#include <vector>
+using namespace std;
+
+string encoding(string a)
+{
+    string b;
+    for (int i = 1; i < a.length() - 1; i++)
+    {
+        b += "0";
+    }
+    b += a;
+    return b;
+}
+
+string int_V_Binary1(int b)
+{
+
+    bitset<8>bity(b);
+    string str = bity.to_string();
+    string str1;
+    int check = 0;
+    for (int i = 0; i < 8; i++)
+    {
+        str1 += str[i];
+    }
+    return str1;
+}
+
+string int_V_Binary(int b)
+{
+
+    bitset<8>bity(b);
+    string str = bity.to_string();
+    string str1;
+    int check = 0;
+    for (int i = 0; i < 9; i++)
+    {
+        if (str[i] == 49 || check == 1)
+        {
+            str1 += str[i];
+            check = 1;
+        }
+    }
+    return str1;
+}
+
+int BinaryTo10(int n)
+{
+    int decimalNumber = 0;
+    int base = 1;
+    int temp = n;
+    while (temp) 
+    {
+        int lastDigit = temp % 10;
+        temp = temp / 10;
+        decimalNumber += lastDigit * base;
+        base = base * 2;
+    }
+    return decimalNumber;
+}
+
+void Decode()
+{
+    ifstream read;
+    ifstream readtable;
+    cout << "Введите путь к папке, в которой лежит архив" << endl;
+    cout << "Например: C:\\\\users\\\\user\\\\documents" << endl;
+    string path;
+    cin >> path;
+    read.open(path + "\\middle.txt");
+    readtable.open(path + "\\table.txt");
+    char ch;
+    int codetable[128][2];
+    int i = 0;
+    while (readtable.get(ch))                  //Читаем таблицу
+    {
+        codetable[i][0] = (int)ch;
+        codetable[i][1] = stoi(int_V_Binary(i + 1));
+        i++;
+    }
+    readtable.close();
+
+    vector<int> dbufer;
+    ofstream write;
+    cout << "Введите путь к месту сохранения раскодированного файла" << endl;
+    cout << "Например: C:\\\\users\\\\user\\\\documents" << endl;
+    string path1;
+    cin >> path1;
+    cout << "Введите название конечного файла" << endl;
+    cout << "Например: example" << endl;
+    string name;
+    cin >> name;
+    write.open(path1 + "\\" + name + ".txt");
+
+    while (read.get(ch))
+    {
+        int cha = (int)ch - 35;
+        if (cha < 0)
+        {
+            cha += 256;
+        }
+        string cham = int_V_Binary1(cha);
+        for (int j = 0; j < cham.length(); j++) //Добавляем код полученого символа в вектор
+        {
+            if (cham[j] == 48)
+                dbufer.push_back(0);
+            else if (cham[j] == 49)
+                dbufer.push_back(1);
+        }
+        int zero = 0;
+        int trigger = 0;
+        int a = 0;
+        for (int j = 0; j < dbufer.size(); j++)       //Раскодируем
+        {
+            if (dbufer[j] == 0 && trigger == 0)
+            {
+                zero++;
+            }
+            else if (dbufer[j] == 1)
+            {
+                trigger = 1;
+                a += pow(10, zero);
+                zero--;
+                if (zero < 0)
+                {
+                    for (int j = 0; j < 128; j++)
+                    {
+                        if (a == codetable[j][1])
+                        {
+                            write << (char)codetable[j][0];
+                            break;
+                        }
+                    }
+                    a = 0;
+                    trigger = 0;
+                    zero = 0;
+                    for (; j > -1; j--)
+                    {
+                        dbufer.erase(dbufer.begin());
+                    }
+                }
+            }
+            else if (dbufer[j] == 0 && trigger == 1)
+            {
+                zero--;
+                if (zero < 0)
+                {
+                    for (int j = 0; j < 128; j++)
+                    {
+                        if (a == codetable[j][1])
+                        {
+                            write << (char)codetable[j][0];
+                            break;
+                        }
+                    }
+                    trigger = 0;
+                    a = 0;
+                    zero = 0;
+                    for (; j > -1; j--)
+                    {
+                        dbufer.erase(dbufer.begin());
+                    }
+                }
+            }
+            write.close();
+        }
+    }
+    read.close();
+}
+
+void Encode()
+{
+    ifstream read;
+    cout << "Введите путь к исходному файлу" << endl;
+    cout << "Например: C:\\\\users\\\\user\\\\documents\\\\text.txt" << endl;
+    string path;
+    cin >> path;
+    read.open(path);
+    if (!read.is_open())
+    {
+        cout << "Ошибка открытия файла" << endl;
+    }
+    else
+    {
+        cout << "Файл открыт" << endl;
+        char ch;
+        int diversity = 0;
+        int array[128][2];
+        for (int i = 0; i < 128; i++)
+        {
+            array[i][0] = 0;
+            array[i][1] = 0;
+        }
+        while (read.get(ch))
+        {
+            for (int i = 0; i <= diversity; i++)
+            {
+                if (ch == array[i][0])
+                {
+                    array[i][1]++;
+                    break;
+                }
+                else if (i == diversity)
+                {
+                    array[i][0] = ch;
+                    array[i][1] = 1;
+                    diversity++;
+                    break;
+                }
+            }
+        }
+        read.close();
+        int flag = 1; // сортировка
+        int tempc, tempi;
+        while (flag)
+        {
+            flag = 0;
+            for (int j = 0; j < 128; j++)
+            {
+                if (array[j][1] < array[j + 1][1])
+                {
+                    tempc = array[j][0];
+                    tempi = array[j][1];
+                    array[j][0] = array[j + 1][0];
+                    array[j][1] = array[j + 1][1];
+                    array[j + 1][0] = tempc;
+                    array[j + 1][1] = tempi;
+                    flag = 1;
+                }
+            }
+        }
+
+        ofstream table;
+        cout << "введите путь к папке, в которую вы хотите сохранить архив" << endl;
+        cout << "Например: C:\\\\users\\\\user\\\\documents" << endl;
+        string path1;
+        cin >> path1;
+        table.open(path1 + "\\table.txt");
+        string codetable[128][2];
+        for (int i = 0; i < 128; i++)
+        {
+            codetable[i][0] = array[i][0];
+            table << codetable[i][0];
+            codetable[i][1] = encoding(int_V_Binary(i + 1));
+        }
+        table.close();
+
+        ofstream write;
+        write.open(path1 + "\\middle.txt");
+        read.open(path);
+        vector<int> bufer;
+        while (read.get(ch))
+        {
+            for (int i = 0; i < 128; i++)
+            {
+                string cha;
+                cha = ch;
+                int a = 0;
+                if (cha == codetable[i][0])
+                {
+                    cha = codetable[i][1];
+                    for (int j = 0; j < cha.length(); j++)
+                    {
+                        if (cha[j] == 48)
+                            bufer.push_back(0);
+                        else if (cha[j] == 49)
+                            bufer.push_back(1);
+                    }
+                    if (bufer.size() > 7)
+                    {
+                        for (int j = 0; j < 8; j++)
+                        {
+                            if (bufer[j] == 1)
+                                a += pow(10, abs(j - 7));
+                        }
+                        char b = BinaryTo10(a);
+                        char c = (int)b + 35;
+                        write << c;
+                        a = 0;
+                        for (int j = 0; j < 8; j++)
+                        {
+                            bufer.erase(bufer.begin());
+                        }
+                    }
+                }
+            }
+        }
+        read.close();
+        if (bufer.size() > 0)
+        {
+            int a = 0;
+            int n = 8 - bufer.size();
+            for (int i = 0; i < n; i++)
+            {
+                bufer.push_back(0);
+            }
+            for (int j = 0; j < 8; j++)
+            {
+                if (bufer[j] == 1)
+                    a += pow(10, abs(j - 7));
+            }
+            char b = BinaryTo10(a);
+            char c = (int)b + 35;
+            write << c;
+            a = 0;
+            for (int j = 0; j < 8; j++)
+            {
+                bufer.erase(bufer.begin());
+            }
+            write.close();
+        }
+        ifstream file1(path, ios::binary | ios::ate);
+        ifstream file2(path1 + "\\middle.txt", ios::binary | ios::ate);
+        cout << file1.tellg() << " byte " << "/ " << file2.tellg() << " byte " <<endl;
+        cout << "Коэффициет сжатия = " << (double)file1.tellg() / (double)file2.tellg() << endl;
+    }
+}
+
+int main()
+{
+    setlocale(LC_ALL, "ru");
+
+    while (1)
+    {
+        int opt;
+
+        cout << endl << "---------------------------------------------" << endl;
+        cout << endl << "      Главное меню   " << endl;
+        cout << endl << "---------------------------------------------" << endl;
+        cout << endl << "Введите 1, чтобы закодировать файл" << endl;
+        cout << endl << "Введите 2, чтобы раскодировать имеющийся архив" << endl;
+        cout << endl << "Введите 3, чтобы прочитать инструкцию" << endl;
+        cout << endl << "Введите 0, чтобы закрыть программу" << endl;
+        cout << endl << "---------------------------------------------" << endl;
+
+        cin >> opt;
+        cout << "\n" << endl;
+
+        switch (opt)
+        {
+        case 1:
+            Encode();
+            break;
+        case 2:
+            Decode();
+            break;
+        case 3:
+            cout << "Это программа для кодирования и раскодирования текстовых файлов" << endl;
+            cout << "Чтобы закодировать файл, после выбора соответствующего пункта меню требуется указать путь к нему и к месту хранения архива." << endl;
+            cout << "Чтобы раскодировать файл, после выбора соответствующего пункта требуется указать путь к архиву." << endl;
+            cout << "При раскодировании файлы архива с названиями middle.txt и list.txt должны лежать в одной папке, путь на которую вы укажете." << endl;
+            cout << "При вводе путей к файлам, чётко следуйте образцам, там где двойные слеши - ставьте именно их," << endl;
+            cout << "там, где в конце ничего не стоит, не надо ставить точки, слеши или другие символы." << endl;
+            break;
+        case 0:
+            exit(1);
+        default:
+            break;
+        }
+    }
+}
